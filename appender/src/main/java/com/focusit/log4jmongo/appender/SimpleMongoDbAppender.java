@@ -64,7 +64,7 @@ public class SimpleMongoDbAppender extends AbstractBsonAppender {
 	protected MongoCollection<Document> collection = null;
     private String tag=null;
 
-    private boolean initialized = false;
+    protected boolean initialized = false;
 
     /**
      * @see org.apache.log4j.AppenderSkeleton#activateOptions()
