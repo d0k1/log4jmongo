@@ -62,6 +62,7 @@ public class SimpleMongoDbAppender extends AbstractBsonAppender {
     private String writeConcern = null;
     private MongoClient mongo = null;
     private MongoCollection<Document> collection = null;
+    private String tag=null;
 
     private boolean initialized = false;
 
@@ -278,6 +279,9 @@ public class SimpleMongoDbAppender extends AbstractBsonAppender {
     public void append(Document bson) {
         if (initialized && bson != null) {
             try {
+            	if(tag!=null){
+            		bson.put("tag", tag);
+            	}
                 getCollection().insertOne(bson);
             } catch (MongoException e) {
                 errorHandler.error("Failed to insert document to MongoDB", e,
@@ -381,6 +385,14 @@ public class SimpleMongoDbAppender extends AbstractBsonAppender {
 
 	public void setSourceDb(String sourceDb) {
 		this.sourceDb = sourceDb;
+	}
+
+	public String getTag() {
+		return tag;
+	}
+
+	public void setTag(String tag) {
+		this.tag = tag;
 	}
 
 }
