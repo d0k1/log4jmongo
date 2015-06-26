@@ -1,0 +1,11 @@
+reports
+target
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings
+*.swp
+*.swo
+bin
