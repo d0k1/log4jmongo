@@ -78,7 +78,7 @@ db.log.find({ $and: [ { "level": "INFO" }, { "message": { $regex: '^\QRoot WebAp
 echo "db.log.find()" | mongo log4j
 ```
 
-#Getting notification from mongo
+#Getting notifications from mongo
 
 ```python
 from pymongo import Connection
