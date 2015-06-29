@@ -3,7 +3,7 @@ Log4mongo
 [Source code on GitHub](http://github.com/d0k1/log4mongo)
 
 # Description
-This library provides Log4J Appender [1] that write log events to the
+This library provides Log4J Appender [1] that writes log events to the
 MongoDB document oriented database [2].
 This library based on http://github.com/log4mongo/log4mongo-java [3].
 
@@ -41,7 +41,7 @@ Then, add dependecy
 <dependency>
     <groupId>com.github.d0k1</groupId>
     <artifactId>log4jmongo</artifactId>
-    <version>1.0</version>
+    <version>1.5</version>
 </dependency>
 ```
 
