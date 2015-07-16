@@ -63,6 +63,7 @@ import com.mongodb.DBObject;
  *                    "package"                 : [ "org", "log4mongo" ],
  *                    "className"               : "TestMongoDbAppender"
  *                  },
+ *   "throwables_simple": "all in one string"
  *   "throwables" : [
  *                    {
  *                      "message"    : "I'm an innocent bystander.",
@@ -135,17 +136,21 @@ public abstract class AbstractBsonAppender extends AppenderSkeleton {
         private static final String KEY_THREAD = "thread";
         private static final String KEY_MESSAGE = "message";
         private static final String KEY_LOGGER_NAME = "loggerName";
+        private static final String KEY_LOGGER = "logger";
         // Source code location
         private static final String KEY_FILE_NAME = "fileName";
         private static final String KEY_METHOD = "method";
         private static final String KEY_LINE_NUMBER = "lineNumber";
         private static final String KEY_CLASS = "class";
+        
+        
         // Class info
         private static final String KEY_FQCN = "fullyQualifiedClassName";
         private static final String KEY_PACKAGE = "package";
         private static final String KEY_CLASS_NAME = "className";
         // Exceptions
         private static final String KEY_THROWABLES = "throwables";
+        private static final String KEY_STACKTRACES = "stacktraces";
         private static final String KEY_EXCEPTION_MESSAGE = "message";
         private static final String KEY_STACK_TRACE = "stackTrace";
         // Host and Process Info
@@ -191,6 +196,7 @@ public abstract class AbstractBsonAppender extends AppenderSkeleton {
                 nullSafePut(result, KEY_THREAD, loggingEvent.getThreadName());
                 nullSafePut(result, KEY_MESSAGE, loggingEvent.getRenderedMessage());
                 nullSafePut(result, KEY_LOGGER_NAME, bsonifyClassName(loggingEvent.getLoggerName()));
+                result.append(KEY_LOGGER, loggingEvent.getLoggerName());
 
                 addMDCInformation(result, loggingEvent.getProperties());
                 addLocationInformation(result, loggingEvent.getLocationInformation());
@@ -238,7 +244,8 @@ public abstract class AbstractBsonAppender extends AppenderSkeleton {
                 nullSafePut(bson, KEY_FILE_NAME, locationInfo.getFileName());
                 nullSafePut(bson, KEY_METHOD, locationInfo.getMethodName());
                 nullSafePut(bson, KEY_LINE_NUMBER, locationInfo.getLineNumber());
-                nullSafePut(bson, KEY_CLASS, bsonifyClassName(locationInfo.getClassName()));
+                nullSafePut(bson, KEY_CLASS_NAME, bsonifyClassName(locationInfo.getClassName()));
+                nullSafePut(bson, KEY_CLASS, locationInfo.getClassName());
             }
         }
 
@@ -255,10 +262,11 @@ public abstract class AbstractBsonAppender extends AppenderSkeleton {
             if (throwableInfo != null) {
                 Throwable currentThrowable = throwableInfo.getThrowable();
                 @SuppressWarnings("rawtypes")
+                StringBuilder simpleThrowables = new StringBuilder();
     			List throwables = new BasicDBList();
 
                 while (currentThrowable != null) {
-                	Document throwableBson = bsonifyThrowable(currentThrowable);
+                	Document throwableBson = bsonifyThrowable(currentThrowable, simpleThrowables);
 
                     if (throwableBson != null) {
                         throwables.add(throwableBson);
@@ -269,6 +277,13 @@ public abstract class AbstractBsonAppender extends AppenderSkeleton {
 
                 if (throwables.size() > 0) {
                     bson.put(KEY_THROWABLES, throwables);
+                    bson.put(KEY_STACKTRACES, simpleThrowables.toString());
+                } else {
+                	simpleThrowables.setLength(0);
+                	for(String item : throwableInfo.getThrowableStrRep()){
+                		simpleThrowables.append(item).append('\n');
+                	}
+                	bson.put(KEY_STACKTRACES, simpleThrowables.toString());
                 }
             }
         }
@@ -290,14 +305,14 @@ public abstract class AbstractBsonAppender extends AppenderSkeleton {
          *            The throwable object to BSONify <i>(may be null)</i>.
          * @return The BSONified equivalent of the Throwable object <i>(may be null)</i>.
          */
-        protected Document bsonifyThrowable(final Throwable throwable) {
+        protected Document bsonifyThrowable(final Throwable throwable, StringBuilder simple) {
         	Document result = null;
 
             if (throwable != null) {
                 result = new Document();
-
+                simple.append(throwable.getClass().getName()).append(':').append(throwable.getMessage()).append('\n');
                 nullSafePut(result, KEY_EXCEPTION_MESSAGE, throwable.getMessage());
-                nullSafePut(result, KEY_STACK_TRACE, bsonifyStackTrace(throwable.getStackTrace()));
+                nullSafePut(result, KEY_STACK_TRACE, bsonifyStackTrace(throwable.getStackTrace(), simple));
             }
 
             return (result);
@@ -310,18 +325,19 @@ public abstract class AbstractBsonAppender extends AppenderSkeleton {
          *            The stack trace object to BSONify <i>(may be null)</i>.
          * @return The BSONified equivalent of the stack trace object <i>(may be null)</i>.
          */
-        protected DBObject bsonifyStackTrace(final StackTraceElement[] stackTrace) {
+        protected DBObject bsonifyStackTrace(final StackTraceElement[] stackTrace, StringBuilder simple) {
             BasicDBList result = null;
 
             if (stackTrace != null && stackTrace.length > 0) {
                 result = new BasicDBList();
 
                 for (StackTraceElement element : stackTrace) {
-                	Document bson = bsonifyStackTraceElement(element);
+                	Document bson = bsonifyStackTraceElement(element, simple);
 
                     if (bson != null) {
                         result.add(bson);
                     }
+                    simple.append('\n');
                 }
             }
 
@@ -335,7 +351,7 @@ public abstract class AbstractBsonAppender extends AppenderSkeleton {
          *            The stack trace element object to BSONify <i>(may be null)</i>.
          * @return The BSONified equivalent of the stack trace element object <i>(may be null)</i>.
          */
-        protected Document bsonifyStackTraceElement(final StackTraceElement element) {
+        protected Document bsonifyStackTraceElement(final StackTraceElement element, StringBuilder simple) {
         	Document result = null;
 
             if (element != null) {
@@ -344,7 +360,12 @@ public abstract class AbstractBsonAppender extends AppenderSkeleton {
                 nullSafePut(result, KEY_FILE_NAME, element.getFileName());
                 nullSafePut(result, KEY_METHOD, element.getMethodName());
                 nullSafePut(result, KEY_LINE_NUMBER, element.getLineNumber());
-                nullSafePut(result, KEY_CLASS, bsonifyClassName(element.getClassName()));
+                nullSafePut(result, KEY_CLASS_NAME, bsonifyClassName(element.getClassName()));
+                nullSafePut(result, KEY_CLASS, element.getClassName());
+                
+                simple.append(element.getClassName());
+                simple.append(".").append(element.getMethodName());
+                simple.append("(").append(element.getFileName()).append(":").append(element.getLineNumber()).append(")");
             }
 
             return (result);

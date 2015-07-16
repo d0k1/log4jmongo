@@ -46,6 +46,9 @@ Then, add dependecy
 ```
 
 If you want you may see build logs here https://jitpack.io/com/github/d0k1/log4jmongo/1.0/build.log
+
+#Repository contents
+This repository contains log4appender, appender usage example, and multiline log4 log file parser.
  
 # References
 * [1] http://logging.apache.org/log4j/1.2/index.html

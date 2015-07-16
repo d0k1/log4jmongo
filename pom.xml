@@ -2,12 +2,13 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.github.d0k1</groupId>
   <artifactId>log4jmongo</artifactId>
-  <version>1.4</version>
+  <version>1.5</version>
   <packaging>pom</packaging>
 
   <modules>
   <module>appender</module>
   <module>example</module>
+  <module>log4jtextparser</module>
   </modules>
 
   <build>
