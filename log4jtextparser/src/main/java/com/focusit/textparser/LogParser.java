@@ -1,4 +1,4 @@
-package com.focusit.textparser;
+	package com.focusit.textparser;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -14,6 +14,11 @@ import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
 import org.apache.log4j.Category;
 import org.apache.log4j.Level;
 import org.apache.log4j.spi.LocationInfo;
@@ -26,7 +31,8 @@ public class LogParser extends SimpleMongoDbAppender {
 	private static String log4Pattern = "%r [%t] (%d{dd MMM yyyy HH:mm:ss,SSS}) %-5p %c{2} - %m%n";
 	//                                   %r         %t            %d            %-5p       %c                       %m     %n     
 	private static String eventRegex = "(^\\w+)\\s+\\[(.*)\\]\\s+\\((.*)\\)\\s+(\\w+)\\s+([A-Za-z0-9\\.]+)\\s+\\-\\s+(.*)(\\n|\\r\\n)?";
-	private static String stacktraceRegex = "^((([A-Za-z0-9\\.]+\\: )|(Caused by:.*)|\\t).*(\\n|\\r\\n)?)";
+	private static String stacktraceRegex = "^((([A-Za-z0-9\\.]+\\: )|(Caused by:.*)|(\\t\\s{0,}at\\s{0,})).*(\\n|\\r\\n)?)";
+	private static String stacktraceTestRegex = "^(((Caused by:.*)|(\\t\\s{0,}at\\s{0,})).*(\\n|\\r\\n)?)";
 	
 	private Pattern eventPattern;
 	private Pattern stacktracePattern;
@@ -36,6 +42,39 @@ public class LogParser extends SimpleMongoDbAppender {
 	public LogParser(){
 		eventPattern = Pattern.compile(eventRegex, Pattern.MULTILINE);
 		stacktracePattern = Pattern.compile(stacktraceRegex, Pattern.MULTILINE);
+	}
+	
+	private String validateCauses(List<String> causes){
+		
+		if(causes.size()==0)
+			return "";
+		
+		StringBuilder builder = new StringBuilder();
+		
+		if(causes.size()>0 && causes.size()<2){
+			builder.append(causes.get(0));
+			causes.clear();
+		} else {		
+			boolean condition = true;
+			while(condition){
+				if(causes.size()==1){
+					builder.append(causes.get(0));
+					condition = false;
+					break;
+				}
+				
+				String one = causes.get(0);
+				String two = causes.get(1);
+				
+				if(one.matches(stacktraceRegex) && two.matches(stacktraceTestRegex)){
+					condition = false;
+				} else {
+					builder.append(causes.get(0));
+					causes.remove(0);
+				}
+			}
+		}
+		return builder.toString();
 	}
 	
 	// This method should be overloaded in some way. At now this method use predefined log4j layout and it regex representation.
@@ -49,6 +88,8 @@ public class LogParser extends SimpleMongoDbAppender {
 		Category cat = new EventCategory(loggerFqn);
 		String level = m.group(4);
 		Level prio = null;
+		
+		messageAdd = messageAdd + validateCauses(causes);
 		
 		switch(level){
 			case "FATAL": prio = Level.FATAL; break;
@@ -193,15 +234,26 @@ public class LogParser extends SimpleMongoDbAppender {
 		}
 	}
 	
-	public static void main(String[] args) throws ParseException{
+	public static void main(String[] args) throws ParseException, org.apache.commons.cli.ParseException{
 		System.out.println("Starting parser");
-		File lf = new File("sample.log");
+
+		Options options = new Options();
+		options.addOption(new Option("f", true, "log file to parse"));
+		options.addOption(new Option("c", true, "log collection name"));
+		options.addOption(new Option("d", true, "log database"));
+		options.addOption(new Option("h", true, "host of database"));
+		options.addOption(new Option("m", true, "write concern"));
+		
+		CommandLineParser parser = new DefaultParser();
+		CommandLine cmd = parser.parse(options, args, true);
+
+		File lf = new File(cmd.getOptionValue("f"));
 
 		LogParser app = new LogParser();
-		app.setCollectionName("log");
-		app.setDatabaseName("log4mongo");
-		app.setHostname("127.0.0.1");
-		app.setWriteConcern("UNACKNOWLEDGED");
+		app.setCollectionName(cmd.getOptionValue("c"));
+		app.setDatabaseName(cmd.getOptionValue("d"));
+		app.setHostname(cmd.getOptionValue("h"));
+		app.setWriteConcern(cmd.getOptionValue("m"));
 		app.initialize();
 		
 		try(PushBackBufferedReader br = new PushBackBufferedReader(new FileReader(lf))){
