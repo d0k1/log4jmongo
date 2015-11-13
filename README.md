@@ -54,3 +54,7 @@ This repository contains log4appender, appender usage example, and multiline log
 * [1] http://logging.apache.org/log4j/1.2/index.html
 * [2] http://www.mongodb.org/
 * [3] http://github.com/log4mongo/log4mongo-java
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/d0k1/log4jmongo/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
